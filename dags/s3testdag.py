@@ -12,7 +12,7 @@ logging.info("This is a log message")
 
 @task()
 def s3_list():
-    minio_hook = S3Hook(aws_conn_id="s3_default")
+    minio_hook = S3Hook(aws_conn_id="s3minio_conn")
     bucket_name = 'test'
 
     logging.info('created s3hook')
