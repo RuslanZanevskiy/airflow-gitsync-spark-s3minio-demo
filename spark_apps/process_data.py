@@ -1,25 +1,9 @@
-import os
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 
 def main():
-    """
-    Основная функция Spark-приложения.
-    """
-    # Получаем переменные окружения для подключения к MinIO
-    # Они должны быть установлены при вызове spark-submit
-    minio_endpoint = os.environ.get("MINIO_ENDPOINT")
-    minio_access_key = os.environ.get("MINIO_ACCESS_KEY")
-    minio_secret_key = os.environ.get("MINIO_SECRET_KEY")
-    
-    # Инициализация SparkSession с поддержкой S3
     spark = SparkSession.builder \
         .appName("AirflowSparkMinIO") \
-        .config("spark.hadoop.fs.s3a.endpoint", minio_endpoint) \
-        .config("spark.hadoop.fs.s3a.access.key", minio_access_key) \
-        .config("spark.hadoop.fs.s3a.secret.key", minio_secret_key) \
-        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
         .getOrCreate()
 
     print("Spark Session создана успешно.")

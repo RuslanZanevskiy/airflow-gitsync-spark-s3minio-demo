@@ -23,7 +23,9 @@ x-airflow-common:
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
   #image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.3}
-  build: .
+  build: 
+    context: .
+    dockerfile: Dockerfile.airflow
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -46,14 +48,26 @@ x-airflow-common:
     #AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     AIRFLOW_CONN_S3MINIO_CONN: 'aws://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@?endpoint_url=http%3A%2F%2Fs3%3A9000'
 
-    AIRFLOW_CONN_SPARK_CONN: 'spark://spark:7077'
+    AIRFLOW_CONN_SPARK_CONN: '{
+        "conn_type": "spark",
+        "host": "spark://spark",
+        "port": 7077,
+        "extra": {
+          "queue": null,
+          "deploy-mode": "client",
+          "spark-binary": "spark-submit",
+          "namespace": null,
+          "principal": null,
+          "keytab": null
+        }    
+      }'
 
   volumes:
     - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
-    - ${AIRFLOW_PROJ_DIR:-.}/spark_apps:/opt/spark/apps
+    - ${AIRFLOW_PROJ_DIR:-.}/spark_apps:/opt/bitnami/spark/apps
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -70,6 +84,8 @@ services:
     env_file:
       - .env
     command: ["server", "--console-address", ":9001", "/data"]
+    volumes:
+      - s3data:/data
 
   postgres:
     image: postgres:14
@@ -256,7 +272,10 @@ services:
       <<: *airflow-common-depends-on
 
   spark:
-    image: docker.io/bitnami/spark:4.0
+    #image: docker.io/bitnami/spark:4.0
+    build: 
+      context: .
+      dockerfile: Dockerfile.spark
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -264,13 +283,17 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+      - SPARK_MASTER_WEBUI_PORT=8081
     ports:
-      - '8000:8080'
+      - '8081:8081'
     volumes:
       - ./spark_apps:/opt/bitnami/spark/apps
 
   spark-worker:
-    image: docker.io/bitnami/spark:4.0
+    #image: docker.io/bitnami/spark:4.0
+    build: 
+      context: .
+      dockerfile: Dockerfile.spark
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark:7077
@@ -287,3 +310,4 @@ services:
 
 volumes:
   postgres-db-volume:
+  s3data:
